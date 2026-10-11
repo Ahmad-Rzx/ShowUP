@@ -1,0 +1,12 @@
+# Local secrets and machine-specific files: never commit these
+config/db.php
+.env
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+*.log
+
+# User uploads (if we add profile or event images later)
+assets/img/uploads/
