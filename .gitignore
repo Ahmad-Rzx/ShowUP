@@ -1,5 +1,5 @@
 # Local secrets and machine-specific files: never commit these
-config/db.php
+config/database.php
 .env
 
 # Editor / OS noise
@@ -9,4 +9,4 @@ config/db.php
 *.log
 
 # User uploads (if we add profile or event images later)
-assets/img/uploads/
+public/assets/img/uploads/
