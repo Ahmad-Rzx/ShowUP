@@ -1,0 +1,95 @@
+/* Signup page styles. Everything is scoped under .auth-page so it cannot clash
+   with the shared style.css. Sultan's login page can reuse these classes. */
+
+.auth-page {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  background: #f4f5f9;
+  color: #1f2430;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.auth-page *, .auth-page *::before, .auth-page *::after { box-sizing: border-box; }
+
+.auth-page .auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 32px 28px;
+  box-shadow: 0 6px 24px rgba(20, 24, 40, 0.08);
+}
+
+.auth-page h1 { margin: 0 0 4px; font-size: 1.6rem; }
+.auth-page .auth-sub { margin: 0 0 24px; color: #5b6275; }
+
+.auth-page .field { margin-bottom: 16px; }
+.auth-page label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.92rem; }
+.auth-page .optional { font-weight: 400; color: #7a8194; }
+
+.auth-page input[type="text"],
+.auth-page input[type="email"],
+.auth-page input[type="password"] {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #c9cedb;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+}
+
+.auth-page input:focus {
+  outline: 2px solid #4f6bed;
+  outline-offset: 1px;
+  border-color: #4f6bed;
+}
+
+.auth-page input[aria-invalid="true"] { border-color: #c62f3e; }
+
+.auth-page .password-row { display: flex; gap: 8px; }
+.auth-page .password-row input { flex: 1; min-width: 0; }
+
+.auth-page .toggle-pw {
+  padding: 0 12px;
+  border: 1px solid #c9cedb;
+  border-radius: 8px;
+  background: #f4f5f9;
+  font: inherit;
+  cursor: pointer;
+}
+
+.auth-page .field-hint { margin: 6px 0 0; font-size: 0.82rem; color: #7a8194; }
+.auth-page .field-error { margin: 6px 0 0; min-height: 1em; font-size: 0.85rem; color: #c62f3e; }
+.auth-page .field-error:empty { display: none; }
+
+.auth-page .auth-alert {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecee;
+  color: #8f1d2a;
+  font-size: 0.92rem;
+}
+
+.auth-page .auth-btn {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #4f6bed;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-page .auth-btn:hover { background: #3f58cf; }
+.auth-page .auth-btn:disabled { opacity: 0.7; cursor: wait; }
+
+.auth-page .auth-switch { margin: 20px 0 0; text-align: center; color: #5b6275; }
+.auth-page .auth-switch a { color: #3f58cf; font-weight: 600; }

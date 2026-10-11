@@ -2,7 +2,7 @@
 # ShowUp dev setup for Kali / Ubuntu / Debian.
 #
 # Installs PHP + Docker, starts MySQL 8.4 in a container, imports the schema and
-# creates config/db.php. Safe to re-run: it never wipes data unless you ask.
+# creates config/database.php. Safe to re-run: it never wipes data unless you ask.
 #
 #   ./scripts/setup.sh              normal setup
 #   ./scripts/setup.sh --reset-db   drop and re-import the schema (WIPES local data)
@@ -17,7 +17,7 @@ DB_USER="showup"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCHEMA="$ROOT_DIR/database/event_schema_v2.sql"
-DB_PHP="$ROOT_DIR/config/db.php"
+DB_PHP="$ROOT_DIR/config/database.php"
 # Credentials live OUTSIDE the repo, so they can never be served by the dev web server or committed.
 CRED_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/showup"
 CRED_FILE="$CRED_DIR/db-credentials"
@@ -111,13 +111,13 @@ else
   say "Schema already present, skipping import (use --reset-db to wipe and reload)"
 fi
 
-# 6. config/db.php -----------------------------------------------------------
+# 6. config/database.php -----------------------------------------------------------
 if [[ ! -f "$DB_PHP" ]]; then
-  say "Creating config/db.php"
-  sed -e "s/CHANGE_ME/${APP_PW}/" "$ROOT_DIR/config/db.example.php" > "$DB_PHP"
+  say "Creating config/database.php"
+  sed -e "s/CHANGE_ME/${APP_PW}/" "$ROOT_DIR/config/database.example.php" > "$DB_PHP"
   chmod 600 "$DB_PHP"
 else
-  say "config/db.php already exists, leaving it alone"
+  say "config/database.php already exists, leaving it alone"
 fi
 
 # 7. Verify ------------------------------------------------------------------
@@ -128,6 +128,6 @@ cat <<MSG
 
 All set. Next:
   cd "$ROOT_DIR"
-  php -S localhost:8000          # then open http://localhost:8000/public/home.php
+  php -S localhost:8000 -t public   # then open http://localhost:8000/signup.php
   ./scripts/mysql-shell.sh       # SQL prompt on the project database
 MSG

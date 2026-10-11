@@ -15,21 +15,20 @@ function fail(string $msg): never
     exit(1);
 }
 
-if (!extension_loaded('pdo_mysql')) {
-    fail('PHP extension pdo_mysql is missing. Install it with: sudo apt install php-mysql');
+if (!extension_loaded('mysqli')) {
+    fail('PHP extension mysqli is missing. Install it with: sudo apt install php-mysql');
 }
 
-$config = __DIR__ . '/../config/db.php';
+$config = __DIR__ . '/../config/database.php';
 if (!is_file($config)) {
-    fail('config/db.php not found. Run ./scripts/setup.sh first.');
+    fail('config/database.php not found. Run ./scripts/setup.sh first.');
 }
-require $config;   // exits with an error by itself if it cannot connect
+require $config;   // provides $conn; exits with an error by itself if it cannot connect
 
-$version = $pdo->query('SELECT VERSION()')->fetchColumn();
-$tables  = $pdo->query('SHOW FULL TABLES')->fetchAll(PDO::FETCH_NUM);
+$version  = $conn->query('SELECT VERSION()')->fetch_row()[0];
+$found    = array_column($conn->query('SHOW FULL TABLES')->fetch_all(MYSQLI_NUM), 0);
 $expected = ['users', 'categories', 'events', 'registrations', 'event_reviews', 'user_reliability'];
-$found = array_column($tables, 0);
-$missing = array_diff($expected, $found);
+$missing  = array_diff($expected, $found);
 
 echo "PHP         : " . PHP_VERSION . "\n";
 echo "MySQL       : {$version}\n";
@@ -39,6 +38,6 @@ if ($missing) {
     fail('Missing from the database: ' . implode(', ', $missing) . '. Run ./scripts/setup.sh --reset-db');
 }
 
-$cats = (int) $pdo->query('SELECT COUNT(*) FROM categories')->fetchColumn();
+$cats = (int) $conn->query('SELECT COUNT(*) FROM categories')->fetch_row()[0];
 echo "Categories  : {$cats} seeded\n";
 echo "OK: PHP can talk to MySQL and the schema is in place.\n";
