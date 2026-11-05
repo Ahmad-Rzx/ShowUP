@@ -1,5 +1,6 @@
 -- Event platform with commitment-based RSVPs -- MySQL 8.0+ (v2, simplified; replaces schema.sql)
 -- Import: mysql -u root -p < event_schema_v2.sql   (or phpMyAdmin > SQL tab)
+-- Existing databases should use database/migrations/2026_11_05_event_modes.sql instead.
 
 DROP DATABASE IF EXISTS event_platform;
 CREATE DATABASE event_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -31,8 +32,12 @@ CREATE TABLE events (
   category_id     INT UNSIGNED NOT NULL,
   title           VARCHAR(150) NOT NULL,
   description     TEXT         NOT NULL,
-  location        VARCHAR(200) NOT NULL,              -- venue or address, or "Online"
-  city            VARCHAR(80)  NULL,
+  event_mode      ENUM('physical','online') NOT NULL DEFAULT 'physical',
+  venue_name      VARCHAR(150) NULL,                  -- physical events only
+  address         VARCHAR(255) NULL,                  -- physical events only
+  online_link     VARCHAR(500) NULL,                  -- online events only
+  location        VARCHAR(200) NOT NULL,              -- short card label: venue + city, or "Online"
+  city            VARCHAR(80)  NULL,                  -- physical events only
   start_datetime  DATETIME     NOT NULL,
   end_datetime    DATETIME     NOT NULL,
   capacity        INT UNSIGNED NULL,                  -- NULL = unlimited seats
@@ -42,9 +47,15 @@ CREATE TABLE events (
   CONSTRAINT fk_events_host     FOREIGN KEY (host_id)     REFERENCES users(user_id)          ON DELETE CASCADE,
   CONSTRAINT fk_events_category FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE RESTRICT,
   CONSTRAINT chk_event_dates    CHECK (end_datetime > start_datetime),
+  CONSTRAINT chk_event_mode_fields CHECK (
+    (event_mode = 'physical' AND venue_name IS NOT NULL AND address IS NOT NULL AND online_link IS NULL)
+    OR
+    (event_mode = 'online'   AND online_link IS NOT NULL AND venue_name IS NULL AND address IS NULL)
+  ),
   INDEX idx_events_start    (start_datetime),
   INDEX idx_events_city     (city),
   INDEX idx_events_category (category_id),
+  INDEX idx_events_mode     (event_mode),
   FULLTEXT idx_events_search (title, description)
 ) ENGINE=InnoDB;
 
@@ -83,11 +94,13 @@ CREATE TABLE event_reviews (
 ) ENGINE=InnoDB;
 
 -- Reliability: derived, not stored (no extra table, nothing to keep in sync) ----------
--- reliability % = attended / (attended + no_shows + late_cancels), calculated in PHP
+-- The label uses attended / confirmed (see includes/event_helpers.php).
+-- no_shows and late_cancels are kept for later reporting; the label does not use them.
 CREATE VIEW user_reliability AS
 SELECT
   r.user_id,
-  SUM(r.checked_in_at IS NOT NULL) AS attended,
+  SUM(r.status = 'registered' AND r.checked_in_at IS NOT NULL) AS attended,
+  SUM(r.status = 'registered' AND r.confirmed_at IS NOT NULL)  AS confirmed,
   SUM(r.status = 'registered' AND r.checked_in_at IS NULL
       AND e.end_datetime < NOW()) AS no_shows,
   SUM(r.status = 'cancelled'
