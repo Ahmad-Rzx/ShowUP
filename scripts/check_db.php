@@ -40,4 +40,13 @@ if ($missing) {
 
 $cats = (int) $conn->query('SELECT COUNT(*) FROM categories')->fetch_row()[0];
 echo "Categories  : {$cats} seeded\n";
+
+$hasEventMode = $conn->query("SHOW COLUMNS FROM events LIKE 'event_mode'")->num_rows > 0;
+$hasReliabilityConfirmed = $conn->query("SHOW COLUMNS FROM user_reliability LIKE 'confirmed'")->num_rows > 0;
+
+if (!$hasEventMode || !$hasReliabilityConfirmed) {
+    fail('The event-mode migration is missing. Run database/migrations/2026_11_05_event_modes.sql');
+}
+
+echo "Event modes : ready (physical and online)\n";
 echo "OK: PHP can talk to MySQL and the schema is in place.\n";

@@ -24,6 +24,11 @@ re-run and never wipes data unless you pass `--reset-db`.
 Why Docker? Kali's `mysql` packages are MariaDB, and MySQL 8.0 is end-of-life.
 The container gives both of us the same supported MySQL on any machine.
 
+**Native MySQL instead of Docker:** Ahmad's Ubuntu VM uses native MySQL on port
+3306. Do not run `scripts/setup.sh` or `scripts/mysql-shell.sh` there. Create
+`config/database.php` from the example by hand, set `$port = 3306`, import the
+schema, and start the site with `php -S localhost:8000 -t public`.
+
 ## Daily use
 
 | Task | Command |
@@ -32,6 +37,7 @@ The container gives both of us the same supported MySQL on any machine.
 | Health check | `php scripts/check_db.php` |
 | SQL prompt | `./scripts/mysql-shell.sh` |
 | Start the DB if it is stopped | `docker start showup-mysql` |
+| Apply the event-mode migration (existing DB, run once) | `mysql -u showup -p event_platform < database/migrations/2026_11_05_event_modes.sql` |
 | Reload the schema (wipes local data) | `./scripts/setup.sh --reset-db` |
 
 ## Structure
@@ -43,15 +49,70 @@ config/
 includes/
   session.php            starts the session safely (include FIRST on every page)
   auth.php               protects a page: not logged in -> login.php
-  helpers.php            e() escaping, CSRF helpers, redirect()
-  header.php, footer.php shared page layout (Sultan)
+  helpers.php            e() escaping, CSRF, redirect and flash messages
+  event_helpers.php      event queries, validation, dates and reliability
+  header.php, footer.php shared page layout (owner: Ahmad)
+  event_form.php         shared create/edit event form
+  errors.php             friendly 403 and 404 pages
 public/                  the web root: only these files are reachable from the browser
   index.php              redirects to home.php or login.php
   signup.php, login.php, logout.php, home.php
+  profile.php            user details, attended events and hosted events
+  event-create.php       host an event (owner: Ahmad)
+  event.php              event detail, online link and check-in (owner: Ahmad)
+  event-edit.php         edit or cancel an event, host only (owner: Ahmad)
+  host-dashboard.php     host's events, codes and attendee lists (owner: Ahmad)
+  checkin.php            handles the attendee check-in form (owner: Ahmad)
   assets/css, assets/js, assets/img
-database/                event_schema_v2.sql
+database/
+  event_schema_v2.sql    fresh installs
+  migrations/            changes for an existing database
 scripts/                 setup.sh, mysql-shell.sh, check_db.php
 ```
+
+## Event model (owner: Ahmad)
+
+`events` now stores both kinds of event:
+
+| Column | Meaning |
+|---|---|
+| `event_mode` | `physical` or `online` |
+| `venue_name`, `address`, `city` | physical events only |
+| `online_link` | online events only, shown to the host and confirmed attendees |
+| `location` | short card label: "Venue, City" or "Online" |
+| `checkin_code` | six-character code shown by the host |
+
+`registrations` already had the columns the commitment flow needs:
+`status` (registered, waitlisted, cancelled), `confirmed_at`, `checked_in_at`
+and `cancelled_at`. No extra status column is needed; the current state is
+derived from those timestamps. `user_reliability` is a **view**, not a table.
+
+Check-in is accepted from 30 minutes before the start until the event ends.
+An attendee must have confirmed before they can check in.
+
+Reliability is `attended / confirmed` from the `user_reliability` view. A user
+with fewer than three confirmed events is labelled **New**. After that the
+label is Highly reliable (90% or more), Reliable (70% or more), Sometimes
+reliable (40% or more) or Unreliable. Hosts see the label on the host dashboard.
+
+## Handoff notes for Sultan
+
+- **Shared layout:** set `$pageTitle` and `$activeNav`, then include
+  `includes/header.php` and `includes/footer.php`. Add the Browse events and
+  My events links to the navigation in `includes/header.php` when those pages
+  are ready. Keep the signed-in user's name linking to `profile.php`.
+- **Flash messages:** call `flash_set('success'|'error'|'info', 'message')`
+  before a redirect; the header shows and clears it.
+- **RSVP:** insert a `registrations` row with `status = 'registered'`. Cancel
+  sets `status = 'cancelled'` and `cancelled_at = NOW()`. Capacity counts
+  registrations whose status is `registered`; waitlisted rows do not count.
+- **Confirm:** set `confirmed_at = NOW()` for that user's registration. This
+  unlocks the online link and check-in.
+- **Reviews:** only allow a review when the user's registration has
+  `checked_in_at` set.
+- **Event form:** `includes/event_form.php` and `public/assets/js/event-form.js`
+  are shared by create and edit. Reuse the `event_*` helpers instead of writing
+  new queries.
 
 ## Team agreements (follow the course guide)
 

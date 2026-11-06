@@ -21,6 +21,26 @@ function char_length(string $value): int
     return (int) preg_match_all('/./su', $value);
 }
 
+/** Shortens long text for cards, cutting at a word and adding "...". */
+function text_excerpt(string $value, int $limit = 160): string
+{
+    $value = trim((string) preg_replace('/\s+/', ' ', $value));
+
+    if (char_length($value) <= $limit) {
+        return $value;
+    }
+
+    $characters = preg_split('//u', $value, -1, PREG_SPLIT_NO_EMPTY);
+    $slice = implode('', array_slice($characters ?: [], 0, $limit));
+    $lastSpace = strrpos($slice, ' ');
+
+    if ($lastSpace !== false) {
+        $slice = substr($slice, 0, $lastSpace);
+    }
+
+    return rtrim($slice) . '...';
+}
+
 /** Returns this session's CSRF token, creating one if needed. */
 function csrf_token(): string
 {
@@ -49,4 +69,26 @@ function redirect(string $url): never
 {
     header('Location: ' . $url);
     exit;
+}
+
+/**
+ * Stores a one-time message for the next page. The shared header shows it.
+ * Use "success" or "error"; "info" is also accepted for neutral notices.
+ */
+function flash_set(string $type, string $message): void
+{
+    $_SESSION['flash'] = ['type' => $type, 'message' => $message];
+}
+
+/** Reads and clears the one-time message, or returns null when there is none. */
+function flash_pull(): ?array
+{
+    $flash = $_SESSION['flash'] ?? null;
+    unset($_SESSION['flash']);
+
+    if (!is_array($flash) || !isset($flash['type'], $flash['message'])) {
+        return null;
+    }
+
+    return ['type' => (string) $flash['type'], 'message' => (string) $flash['message']];
 }
