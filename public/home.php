@@ -1,151 +1,104 @@
 <?php
 /**
- * Home page: authenticated users see their event dashboard.
- * Ahmad owns the database query for real events; this page keeps a small demo
- * dataset for the frontend until that integration is ready.
+ * Home page: a small dashboard for the logged-in user.
+ *
+ * Shows upcoming events the user can still join, plus shortcuts to their
+ * profile and host dashboard. Registration itself happens on event.php.
  */
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/event_helpers.php';
 
-$userName = $_SESSION['user_name'] ?? 'Friend';
+$userId = (int) $_SESSION['user_id'];
+$userName = (string) ($_SESSION['user_name'] ?? 'Friend');
+$reliability = user_reliability_stats($conn, $userId);
+$upcomingEvents = event_fetch_upcoming_for_user($conn, $userId, 6);
+$browsePageExists = is_file(__DIR__ . '/events.php');
 
-// Ahmad: replace the demo data below with the real event query once it's ready.
-$events = [
-    [
-        'title' => 'City Night Run',
-        'category' => 'Sports',
-        'date' => 'Tue, Oct 15 • 6:30 PM',
-        'location' => 'Green Park, Dubai',
-        'description' => 'A relaxed 5K run with a post-race social hangout and light refreshments.',
-    ],
-    [
-        'title' => 'Designing for Real Users',
-        'category' => 'Education',
-        'date' => 'Thu, Oct 17 • 7:00 PM',
-        'location' => 'Innovation Lab, Sharjah',
-        'description' => 'A workshop exploring accessible UX practices, user testing, and product thinking.',
-    ],
-    [
-        'title' => 'Open Mic & Coffee',
-        'category' => 'Arts',
-        'date' => 'Sat, Oct 19 • 8:00 PM',
-        'location' => 'The Lantern Café',
-        'description' => 'Bring a poem, story, or song and meet local creators in a relaxed setting.',
-    ],
-    [
-        'title' => 'Startup Mixer',
-        'category' => 'Networking',
-        'date' => 'Mon, Oct 21 • 6:00 PM',
-        'location' => 'Skyline Hub, Dubai',
-        'description' => 'Meet founders, developers, and students for conversations, introductions, and collaboration.',
-    ],
-];
+$pageTitle = 'Home';
+$activeNav = 'home';
+
+require __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home | ShowUp</title>
-  <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
-  <header class="site-header">
-    <div class="container">
-      <a href="home.php" class="brand" aria-label="ShowUp home">
-        <span class="brand-mark">S</span>
-        <span>ShowUp</span>
-      </a>
+<main class="page-shell">
+  <div class="container">
+    <header class="page-header">
+      <div>
+        <h1>Hello, <?= e($userName) ?></h1>
+        <p class="page-subtitle">Find your next event and keep track of who is coming.</p>
+      </div>
+      <div class="button-row">
+        <a class="secondary-btn" href="profile.php">My profile</a>
+        <a class="secondary-btn" href="host-dashboard.php">Host dashboard</a>
+        <a class="primary-btn" href="event-create.php">Host an event</a>
+      </div>
+    </header>
 
-      <nav class="nav-menu" aria-label="Main navigation">
-        <a class="nav-link" href="home.php">Home</a>
-        <a class="nav-link" href="#events">Explore</a>
-        <a class="nav-link" href="#events">Upcoming</a>
-        <form method="post" action="logout.php" class="logout-form">
-          <?= csrf_field() ?>
-          <button type="submit" class="nav-logout">Log out</button>
-        </form>
-      </nav>
+    <section class="summary-bar" aria-label="Your reliability summary">
+      <div>
+        <span class="summary-label">Your reliability</span>
+        <?= user_reliability_badge_html($reliability) ?>
+      </div>
+      <div class="field-hint">
+        <?= (int) $reliability['attended'] ?> attended out of
+        <?= (int) $reliability['confirmed'] ?> confirmed events.
+      </div>
+    </section>
+
+    <div class="section-head">
+      <h2 class="section-title">Upcoming events you can join</h2>
+      <?php if ($browsePageExists): ?>
+        <a class="secondary-btn" href="events.php">Browse all events</a>
+      <?php endif; ?>
     </div>
-  </header>
 
-  <main class="page-shell">
-    <div class="container">
-      <header class="page-header">
-        <div>
-          <h1>Hello, <?= e($userName) ?></h1>
-          <p class="page-subtitle">Find your next event and plan your week.</p>
-        </div>
-      </header>
+    <?php if (empty($upcomingEvents)): ?>
+      <div class="empty-state">
+        <p>There are no upcoming events to join right now.</p>
+        <p><a class="primary-btn" href="event-create.php">Host your own event</a></p>
+      </div>
+    <?php else: ?>
+      <div class="event-grid">
+        <?php foreach ($upcomingEvents as $event): ?>
+          <article class="event-card">
+            <div class="badge-row">
+              <span class="event-badge"><?= e($event['category_name']) ?></span>
+              <span class="mode-badge mode-<?= e($event['event_mode']) ?>">
+                <?= $event['event_mode'] === 'online' ? 'Online' : 'In person' ?>
+              </span>
+            </div>
 
-      <section class="search-panel" aria-label="Event search">
-        <div class="search-row">
-          <div class="search-input">
-            <label class="sr-only" for="event-search">Search events</label>
-            <input id="event-search" type="search" placeholder="Search events, categories, or locations" aria-label="Search events">
-          </div>
-        </div>
-        <p class="search-hint">Client-side search on the current event list.</p>
-      </section>
+            <h3>
+              <a href="event.php?event_id=<?= (int) $event['event_id'] ?>"><?= e($event['title']) ?></a>
+            </h3>
+            <p class="field-hint">Hosted by <?= e($event['host_name']) ?></p>
+            <p><?= e(text_excerpt((string) $event['description'])) ?></p>
 
-      <section id="events" aria-labelledby="events-title">
-        <div class="page-header">
-          <div>
-            <h2 id="events-title">Events near you</h2>
-          </div>
-        </div>
+            <div class="event-meta">
+              <div class="event-meta-item">
+                <strong>Date</strong>
+                <span><?= e(format_event_when($event['start_datetime'], $event['end_datetime'])) ?></span>
+              </div>
+              <div class="event-meta-item">
+                <strong>Where</strong>
+                <span><?= e($event['location']) ?></span>
+              </div>
+              <div class="event-meta-item">
+                <strong>Going</strong>
+                <span><?= (int) $event['attendee_count'] ?> people</span>
+              </div>
+            </div>
 
-        <?php if (empty($events)): ?>
-          <div class="empty-state">
-            No events are available right now. Check back soon for new opportunities.
-          </div>
-        <?php else: ?>
-          <div class="event-grid">
-            <?php foreach ($events as $event): ?>
-              <article class="event-card" data-search="<?= e(strtolower($event['title'] . ' ' . $event['category'] . ' ' . $event['location'])) ?>">
-                <span class="event-badge"><?= e($event['category']) ?></span>
-                <div>
-                  <h3><?= e($event['title']) ?></h3>
-                </div>
-                <p><?= e($event['description']) ?></p>
-
-                <div class="event-meta">
-                  <div class="event-meta-item"><strong>Date</strong><span><?= e($event['date']) ?></span></div>
-                  <div class="event-meta-item"><strong>Where</strong><span><?= e($event['location']) ?></span></div>
-                </div>
-
-                <div class="event-actions">
-                  <a class="secondary-btn" href="#">View details</a>
-                  <button type="button" class="primary-btn" aria-label="View event <?= e($event['title']) ?>">Open</button>
-                </div>
-              </article>
-            <?php endforeach; ?>
-          </div>
-        <?php endif; ?>
-      </section>
-    </div>
-  </main>
-
-  <script>
-    (function () {
-      const searchInput = document.getElementById('event-search');
-      const cards = Array.from(document.querySelectorAll('.event-card'));
-
-      if (!searchInput || cards.length === 0) {
-        return;
-      }
-
-      searchInput.addEventListener('input', function () {
-        const query = searchInput.value.trim().toLowerCase();
-
-        cards.forEach(function (card) {
-          const match = !query || card.dataset.search.includes(query);
-          card.classList.toggle('hidden', !match);
-        });
-      });
-    })();
-  </script>
-</body>
-</html>
+            <div class="event-actions">
+              <a class="primary-btn" href="event.php?event_id=<?= (int) $event['event_id'] ?>">View event</a>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </div>
+</main>
+<?php require __DIR__ . '/../includes/footer.php'; ?>
