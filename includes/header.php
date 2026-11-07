@@ -4,10 +4,9 @@
  *
  * A page sets these before including this file:
  *   $pageTitle  string  shown in the browser tab
- *   $activeNav  string  home, host-create, host-dashboard or profile
+ *   $activeNav  string  home, browse-events, host-create, host-dashboard or profile
  *
- * Sultan: add Browse events (events.php) and My events (my-events.php) to the
- * navigation when those pages are ready. Keep this file in sync with him.
+ * My events (my-events.php) can be added when that page is ready.
  */
 declare(strict_types=1);
 
@@ -38,6 +37,7 @@ $flashRole = $flash !== null && $flash['type'] === 'error' ? 'alert' : 'status';
 
       <nav class="nav-menu" aria-label="Main navigation">
         <a class="nav-link<?= $activeNav === 'home' ? ' is-active' : '' ?>" href="home.php">Home</a>
+        <a class="nav-link<?= $activeNav === 'browse-events' ? ' is-active' : '' ?>" href="events.php">Browse events</a>
         <a class="nav-link<?= $activeNav === 'host-create' ? ' is-active' : '' ?>" href="event-create.php">Host an event</a>
         <a class="nav-link<?= $activeNav === 'host-dashboard' ? ' is-active' : '' ?>" href="host-dashboard.php">Host dashboard</a>
 
