@@ -38,7 +38,13 @@ schema, and start the site with `php -S localhost:8000 -t public`.
 | SQL prompt | `./scripts/mysql-shell.sh` |
 | Start the DB if it is stopped | `docker start showup-mysql` |
 | Apply the event-mode migration (existing DB, run once) | `mysql -u showup -p event_platform < database/migrations/2026_11_05_event_modes.sql` |
+| Add the demo host and sample events | `mysql -h localhost -P 3307 -u showup -p event_platform < database/seed.sql` |
 | Reload the schema (wipes local data) | `./scripts/setup.sh --reset-db` |
+
+For native MySQL on port 3306, change `-P 3307` to `-P 3306`. The seed script is
+safe to re-run without duplicating its events. It creates a demo login of
+`demo.host@showup.test` / `ShowUpDemo2026`; use it only for local development.
+Online meeting URLs in the sample data are placeholders.
 
 ## Structure
 
@@ -66,6 +72,7 @@ public/                  the web root: only these files are reachable from the b
   assets/css, assets/js, assets/img
 database/
   event_schema_v2.sql    fresh installs
+  seed.sql               demo host and sample events
   migrations/            changes for an existing database
 scripts/                 setup.sh, mysql-shell.sh, check_db.php
 ```
@@ -98,9 +105,9 @@ reliable (40% or more) or Unreliable. Hosts see the label on the host dashboard.
 ## Handoff notes for Sultan
 
 - **Shared layout:** set `$pageTitle` and `$activeNav`, then include
-  `includes/header.php` and `includes/footer.php`. Add the Browse events and
-  My events links to the navigation in `includes/header.php` when those pages
-  are ready. Keep the signed-in user's name linking to `profile.php`.
+  `includes/header.php` and `includes/footer.php`. Browse events is available
+  at `public/events.php`; My events can be added to navigation when that page
+  is ready. Keep the signed-in user's name linking to `profile.php`.
 - **Flash messages:** call `flash_set('success'|'error'|'info', 'message')`
   before a redirect; the header shows and clears it.
 - **RSVP:** insert a `registrations` row with `status = 'registered'`. Cancel
