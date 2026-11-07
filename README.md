@@ -63,6 +63,9 @@ includes/
 public/                  the web root: only these files are reachable from the browser
   index.php              redirects to home.php or login.php
   signup.php, login.php, logout.php, home.php
+  events.php             browse upcoming events with search and filters
+  my-events.php          the signed-in user's upcoming and past RSVPs
+  rsvp.php               create, waitlist or cancel a user's RSVP
   profile.php            user details, attended events and hosted events
   event-create.php       host an event (owner: Ahmad)
   event.php              event detail, online link and check-in (owner: Ahmad)
@@ -105,14 +108,15 @@ reliable (40% or more) or Unreliable. Hosts see the label on the host dashboard.
 ## Handoff notes for Sultan
 
 - **Shared layout:** set `$pageTitle` and `$activeNav`, then include
-  `includes/header.php` and `includes/footer.php`. Browse events is available
-  at `public/events.php`; My events can be added to navigation when that page
-  is ready. Keep the signed-in user's name linking to `profile.php`.
+  `includes/header.php` and `includes/footer.php`. Browse events and My events
+  are available at `public/events.php` and `public/my-events.php`. Keep the
+  signed-in user's name linking to `profile.php`.
 - **Flash messages:** call `flash_set('success'|'error'|'info', 'message')`
   before a redirect; the header shows and clears it.
-- **RSVP:** insert a `registrations` row with `status = 'registered'`. Cancel
-  sets `status = 'cancelled'` and `cancelled_at = NOW()`. Capacity counts
-  registrations whose status is `registered`; waitlisted rows do not count.
+- **RSVP:** `public/rsvp.php` handles RSVP and cancellation POSTs. It checks
+  capacity while locking the event row; full events create a `waitlisted`
+  registration. Capacity counts only rows whose status is `registered`.
+  Cancellation sets `status = 'cancelled'` and `cancelled_at = NOW()`.
 - **Confirm:** set `confirmed_at = NOW()` for that user's registration. This
   unlocks the online link and check-in.
 - **Reviews:** only allow a review when the user's registration has
