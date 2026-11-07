@@ -27,6 +27,7 @@ if ($event === null) {
 }
 
 $registration = event_fetch_registration($conn, $eventId, $userId);
+$review = event_fetch_review($conn, $eventId, $userId);
 $isHost = (int) $event['host_id'] === $userId;
 $isCancelled = $event['status'] === 'cancelled';
 $canManageRsvp = !$isHost && !$isCancelled && (bool) $event['registration_open'];
@@ -159,6 +160,57 @@ require __DIR__ . '/../includes/header.php';
               </div>
             <?php else: ?>
               <div class="notice">Check-in closed on <?= e($checkinWindow['closes']->format('D, j M Y, g:i A')) ?>.</div>
+            <?php endif; ?>
+          </section>
+        <?php endif; ?>
+
+        <?php if ($registration !== null && $registration['status'] === 'registered'
+            && $registration['confirmed_at'] === null && $canManageRsvp): ?>
+          <section class="detail-card" aria-labelledby="confirm-title">
+            <h2 id="confirm-title">Confirm your attendance</h2>
+            <p>Confirm that you plan to attend. This also unlocks the online meeting link and check-in.</p>
+            <form method="post" action="confirm.php">
+              <?= csrf_field() ?>
+              <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+              <button type="submit" class="primary-btn">I'm still coming</button>
+            </form>
+          </section>
+        <?php endif; ?>
+
+        <?php if ($isCheckedIn): ?>
+          <section class="detail-card" aria-labelledby="review-title">
+            <h2 id="review-title">Review this event</h2>
+            <?php if ($review !== null): ?>
+              <p>
+                Your rating:
+                <strong><?= (int) $review['rating'] ?> / 5</strong>
+              </p>
+              <?php if (($review['comment'] ?? '') !== ''): ?>
+                <p><?= nl2br(e($review['comment'])) ?></p>
+              <?php endif; ?>
+              <p class="field-hint">Submitted <?= e(format_event_datetime($review['created_at'])) ?>.</p>
+            <?php else: ?>
+              <p>Thanks for attending. Share a rating and an optional comment.</p>
+              <form method="post" action="review.php">
+                <?= csrf_field() ?>
+                <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                <div class="field">
+                  <label for="rating">Rating</label>
+                  <select id="rating" name="rating" required>
+                    <option value="">Choose a rating</option>
+                    <option value="5">5 - Excellent</option>
+                    <option value="4">4 - Good</option>
+                    <option value="3">3 - Okay</option>
+                    <option value="2">2 - Poor</option>
+                    <option value="1">1 - Very poor</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="comment">Comment <span class="field-hint">(optional, up to 1000 characters)</span></label>
+                  <textarea id="comment" name="comment" maxlength="1000"></textarea>
+                </div>
+                <button type="submit" class="primary-btn">Submit review</button>
+              </form>
             <?php endif; ?>
           </section>
         <?php endif; ?>
