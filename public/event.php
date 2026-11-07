@@ -29,6 +29,7 @@ if ($event === null) {
 $registration = event_fetch_registration($conn, $eventId, $userId);
 $isHost = (int) $event['host_id'] === $userId;
 $isCancelled = $event['status'] === 'cancelled';
+$canManageRsvp = !$isHost && !$isCancelled && (bool) $event['registration_open'];
 $isConfirmedAttendee = $registration !== null
     && $registration['status'] === 'registered'
     && $registration['confirmed_at'] !== null;
@@ -181,6 +182,41 @@ require __DIR__ . '/../includes/header.php';
             </div>
           </dl>
         </section>
+
+        <?php if ($canManageRsvp): ?>
+          <section class="side-card" aria-labelledby="rsvp-title">
+            <h2 id="rsvp-title">Your RSVP</h2>
+            <?php if ($registration !== null && in_array($registration['status'], ['registered', 'waitlisted'], true)): ?>
+              <p>
+                <span class="status-pill status-<?= e(event_registration_status_class($registration)) ?>">
+                  <?= e(event_registration_status($registration)) ?>
+                </span>
+              </p>
+              <form method="post" action="rsvp.php">
+                <?= csrf_field() ?>
+                <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                <input type="hidden" name="action" value="cancel">
+                <button type="submit" class="secondary-btn">Cancel RSVP</button>
+              </form>
+            <?php else: ?>
+              <?php if ($registration !== null && $registration['status'] === 'cancelled'): ?>
+                <p class="field-hint">Your previous RSVP was cancelled.</p>
+              <?php endif; ?>
+              <form method="post" action="rsvp.php">
+                <?= csrf_field() ?>
+                <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                <input type="hidden" name="action" value="register">
+                <button type="submit" class="primary-btn">RSVP to this event</button>
+              </form>
+              <?php if ($event['capacity'] !== null): ?>
+                <p class="field-hint">
+                  <?= (int) $event['attendee_count'] ?> of <?= (int) $event['capacity'] ?> seats taken.
+                  If the event is full, you will be waitlisted.
+                </p>
+              <?php endif; ?>
+            <?php endif; ?>
+          </section>
+        <?php endif; ?>
 
         <?php if ($registration !== null): ?>
           <section class="side-card" aria-labelledby="registration-title">
