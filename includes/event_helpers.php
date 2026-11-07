@@ -125,6 +125,21 @@ function event_fetch_registration(mysqli $conn, int $eventId, int $userId): ?arr
     return $registration ?: null;
 }
 
+/** Loads this user's review for an event, or null when no review has been submitted. */
+function event_fetch_review(mysqli $conn, int $eventId, int $userId): ?array
+{
+    $stmt = $conn->prepare(
+        'SELECT rating, comment, created_at
+         FROM event_reviews WHERE event_id = ? AND user_id = ? LIMIT 1'
+    );
+    $stmt->bind_param('ii', $eventId, $userId);
+    $stmt->execute();
+    $review = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $review ?: null;
+}
+
 /** All events this user registered for, including waitlisted and cancelled registrations. */
 function user_fetch_registrations(mysqli $conn, int $userId): array
 {
