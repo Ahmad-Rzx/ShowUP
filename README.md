@@ -46,6 +46,28 @@ safe to re-run without duplicating its events. It creates a demo login of
 `demo.host@showup.test` / `ShowUpDemo2026`; use it only for local development.
 Online meeting URLs in the sample data are placeholders.
 
+## Demo walkthrough
+
+Seed and print the short demo walkthrough:
+
+```bash
+./scripts/demo.sh
+```
+
+The script prompts for the MySQL user's password. For native MySQL or a custom
+setup, override connection settings, for example:
+
+```bash
+MYSQL_PORT=3306 MYSQL_USER=showup ./scripts/demo.sh
+```
+
+For the full RSVP-to-review presentation, create a test event starting about
+15 minutes from now. Sign in as a second account in a private window, RSVP and
+confirm, then check in while the event is in progress and submit a review. The
+seeded sample events are scheduled later and are intended for browsing.
+
+The complete entity relationship diagram is in [database/ERD.md](database/ERD.md).
+
 ## Structure
 
 ```
@@ -78,8 +100,9 @@ public/                  the web root: only these files are reachable from the b
 database/
   event_schema_v2.sql    fresh installs
   seed.sql               demo host and sample events
+  ERD.md                 current entity relationship diagram
   migrations/            changes for an existing database
-scripts/                 setup.sh, mysql-shell.sh, check_db.php
+scripts/                 setup.sh, mysql-shell.sh, check_db.php, demo.sh
 ```
 
 ## Event model (owner: Ahmad)
@@ -145,6 +168,18 @@ reliable (40% or more) or Unreliable. Hosts see the label on the host dashboard.
 - **Pages** are `.php` files containing plain HTML. Each form posts to its own file.
 - **Paths** inside `public/` are relative: `assets/css/style.css`, `login.php`.
 
+## Final review checklist
+
+- **Responsive UI:** navigation, forms, event cards, and detail layouts adapt
+  for narrow screens; tables remain horizontally scrollable where needed.
+- **Empty/error states:** browse and account pages explain when there is no
+  content; invalid or unauthorized event access uses friendly 404/403 pages.
+- **Security:** edit and cancel operations verify event ownership; all POST
+  forms include CSRF tokens; dynamic SQL uses prepared statements; user and
+  database content is escaped with `e()` before HTML output.
+- **Demo data:** `database/seed.sql` is safe to re-run, and
+  `./scripts/demo.sh` loads it before the presentation.
+
 ## Git workflow
 
 - `main` always works. Work on your own branch (`feature/signup`, `feature/login`) and merge by pull request.
@@ -160,7 +195,10 @@ reliable (40% or more) or Unreliable. Hosts see the label on the host dashboard.
 - **PHP can't find the MySQL driver:** `sudo apt install php-mysql`.
 - **"Headers already sent":** something printed output before `session_start()` or `header()`. Make the
   PHP block at the very top of the file, with nothing (not even a blank line) before `<?php`.
-- **Always use `127.0.0.1`, not `localhost`,** as the DB host. `localhost` makes PHP look for a Unix socket.
+- **Database host differs by setup:** use the host and port that work from the
+  PHP server's environment. `localhost` may use a Unix socket; `127.0.0.1`
+  uses TCP. Docker and native MySQL can require different values in
+  `config/database.php`.
 
 ## Start over (full clean slate)
 
