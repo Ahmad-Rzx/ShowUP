@@ -244,12 +244,16 @@ require __DIR__ . '/../includes/header.php';
                   <?= e(event_registration_status($registration)) ?>
                 </span>
               </p>
-              <form method="post" action="rsvp.php">
-                <?= csrf_field() ?>
-                <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
-                <input type="hidden" name="action" value="cancel">
-                <button type="submit" class="secondary-btn">Cancel RSVP</button>
-              </form>
+              <?php if ($registration['checked_in_at'] === null): ?>
+                <form method="post" action="rsvp.php">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                  <input type="hidden" name="action" value="cancel">
+                  <button type="submit" class="secondary-btn">Cancel RSVP</button>
+                </form>
+              <?php else: ?>
+                <p class="field-hint">You have checked in, so this RSVP can no longer be cancelled.</p>
+              <?php endif; ?>
             <?php else: ?>
               <?php if ($registration !== null && $registration['status'] === 'cancelled'): ?>
                 <p class="field-hint">Your previous RSVP was cancelled.</p>
