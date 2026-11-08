@@ -78,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         event_validate_capacity($values)
     );
 
-    // The capacity cannot drop below the number of people already going.
     if (!isset($errors['capacity']) && $values['capacity'] !== ''
         && (int) $values['capacity'] < (int) $event['attendee_count']) {
         $errors['capacity'] = 'Capacity cannot be lower than the '
@@ -104,7 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             event_update($conn, $eventId, $userId, event_prepare_for_save($values));
-            // A bigger capacity may let waitlisted attendees move up.
             event_promote_waitlisted($conn, $eventId);
             $conn->commit();
             flash_set('success', 'Event updated.');
