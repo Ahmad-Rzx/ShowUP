@@ -11,7 +11,6 @@
   var charLength = function (s) { return Array.from(s).length; };
   var byteLength = function (s) { return new TextEncoder().encode(s).length; };
 
-  // One function per field. Each returns an error message, or '' when the value is fine.
   var rules = {
     full_name: function (v) {
       var n = charLength(v.trim());
@@ -54,20 +53,16 @@
 
   Object.keys(rules).forEach(function (name) {
     var input = form.elements[name];
-    // Check when the user leaves a field...
     input.addEventListener('blur', function () { check(name); });
-    // ...and re-check while typing, but only once an error is already showing
     input.addEventListener('input', function () {
       if (input.getAttribute('aria-invalid') === 'true') { check(name); }
     });
   });
 
-  // Keep "confirm password" in sync when the first password changes
   form.elements.password.addEventListener('input', function () {
     if (form.elements.confirm_password.value !== '') { check('confirm_password'); }
   });
 
-  // Show / hide password buttons
   Array.prototype.forEach.call(form.querySelectorAll('.toggle-pw'), function (btn) {
     btn.addEventListener('click', function () {
       var input = document.getElementById(btn.getAttribute('data-target'));
@@ -78,7 +73,6 @@
     });
   });
 
-  // On submit: stop if anything is wrong, otherwise stop double-clicks
   form.addEventListener('submit', function (event) {
     var firstBad = null;
     Object.keys(rules).forEach(function (name) {
