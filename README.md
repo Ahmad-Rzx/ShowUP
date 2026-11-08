@@ -1,211 +1,322 @@
 # ShowUp
 
-Event platform with commitment-based RSVPs. Web Technologies semester project
-(HTML, CSS, JavaScript, PHP, MySQL). Team: Ahmad and Sultan. Weekly sync: Sundays.
+ShowUp is a small event platform built around commitment-based RSVPs. People can
+discover events, reserve a spot, confirm their attendance, check in on the day,
+and leave a review afterwards. Hosts get a dashboard with attendee lists, check-in
+codes, and reliability labels for the people who signed up.
 
-The PHP structure follows the course guide (`PHP_authentication.md` in the course repo):
-only `public/` is web-accessible; config and includes live outside it.
+This is a semester project for Web Technologies, built with plain HTML, CSS,
+JavaScript, PHP, and MySQL.
 
-## Quick start (Kali, Ubuntu or Debian)
+## Features
+
+- Account signup, login, logout, and profile management
+- Browse upcoming events with search, category, city, and mode filters
+- Physical and online events, with online links shown only to confirmed attendees
+- Event creation, editing, and cancellation for hosts
+- Capacity-aware RSVPs with an automatic waitlist
+- FIFO waitlist promotion when a spot opens
+- A confirmation step before the event starts
+- Check-in with a six-character code during the event window
+- One rating and review per attendee after check-in
+- Reliability labels calculated from confirmed and attended events
+- My Events page with upcoming and past RSVPs
+- Host dashboard with events, attendee lists, and check-in codes
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | PHP 8 with MySQLi prepared statements |
+| Database | MySQL 8.4 |
+| Frontend | HTML, CSS, vanilla JavaScript |
+| Local database option | Docker container running MySQL 8.4 |
+| Server | PHP built-in development server |
+
+No PHP framework or build step is required.
+
+## Requirements
+
+- Linux (Kali, Ubuntu, or Debian recommended)
+- PHP 8.0 or newer with the `mysqli` extension
+- MySQL 8.4, either natively or through Docker
+- `git`
+- The `mysql` client only if you want to import seed data or migrations manually
+
+To check your PHP setup:
 
 ```bash
-git clone <repo-url> showup && cd showup
+php -v
+php -m | grep mysqli
+```
+
+## Quick start with Docker
+
+From the project root:
+
+```bash
+git clone <repo-url> showup
+cd showup
 ./scripts/setup.sh
 php -S localhost:8000 -t public
 ```
 
-Then open http://localhost:8000/signup.php.
+Then open:
 
-`setup.sh` installs PHP and Docker, runs **MySQL 8.4** in a container on
-`127.0.0.1:3307`, imports `database/event_schema_v2.sql`, creates your local
-`config/database.php` and checks that PHP can reach the database. It is safe to
-re-run and never wipes data unless you pass `--reset-db`.
+```text
+http://localhost:8000
+```
 
-Why Docker? Kali's `mysql` packages are MariaDB, and MySQL 8.0 is end-of-life.
-The container gives both of us the same supported MySQL on any machine.
+`scripts/setup.sh` installs the required packages, starts a MySQL 8.4 container
+named `showup-mysql`, publishes it on `127.0.0.1:3307`, imports the schema, and
+creates the local `config/database.php` file. It is safe to re-run and does not
+wipe data unless you pass `--reset-db`.
 
-**Native MySQL instead of Docker:** Ahmad's Ubuntu VM uses native MySQL on port
-3306. Do not run `scripts/setup.sh` or `scripts/mysql-shell.sh` there. Create
-`config/database.php` from the example by hand, set `$port = 3306`, import the
-schema, and start the site with `php -S localhost:8000 -t public`.
+Docker is the recommended path on Kali because its `mysql` packages are MariaDB,
+not MySQL. The container also gives every machine the same database version.
 
-## Daily use
+## Manual setup with native MySQL
 
-| Task | Command |
-|---|---|
-| Run the site | `php -S localhost:8000 -t public` from the repo root |
-| Health check | `php scripts/check_db.php` |
-| SQL prompt | `./scripts/mysql-shell.sh` |
-| Start the DB if it is stopped | `docker start showup-mysql` |
-| Apply the event-mode migration (existing DB, run once) | `mysql -u showup -p event_platform < database/migrations/2026_11_05_event_modes.sql` |
-| Add the demo host and sample events | `mysql -h localhost -P 3307 -u showup -p event_platform < database/seed.sql` |
-| Reload the schema (wipes local data) | `./scripts/setup.sh --reset-db` |
+If MySQL 8.4 is already installed and listening on port `3306`:
 
-For native MySQL on port 3306, change `-P 3307` to `-P 3306`. The seed script is
-safe to re-run without duplicating its events. It creates a demo login of
-`demo.host@showup.test` / `ShowUpDemo2026`; use it only for local development.
-Online meeting URLs in the sample data are placeholders.
+```bash
+cp config/database.example.php config/database.php
+```
 
-## Demo walkthrough
+Edit `config/database.php` and set your own host, port, username, password, and
+database name. For a native MySQL install, change the port to `3306`.
 
-Seed and print the short demo walkthrough:
+Import the schema:
+
+```bash
+mysql -u showup -p event_platform < database/event_schema_v2.sql
+```
+
+Then verify the connection:
+
+```bash
+php scripts/check_db.php
+```
+
+Finally, start the server:
+
+```bash
+php -S localhost:8000 -t public
+```
+
+`config/database.php` is gitignored. Never commit real database credentials.
+
+## Database
+
+The application database is called `event_platform`. The fresh-install schema is
+in `database/event_schema_v2.sql`.
+
+For a database created before the event-mode feature, run the migration once:
+
+```bash
+mysql -u showup -p event_platform < database/migrations/2026_11_05_event_modes.sql
+```
+
+To confirm the schema and PHP connection:
+
+```bash
+php scripts/check_db.php
+```
+
+A successful check prints the PHP version, MySQL version, detected tables, the
+number of seeded categories, and an `OK` message.
+
+## Demo data
+
+Load the demo host and sample events:
 
 ```bash
 ./scripts/demo.sh
 ```
 
-The script prompts for the MySQL user's password. For native MySQL or a custom
-setup, override connection settings, for example:
+The script uses the Docker defaults (`localhost:3307`, user `showup`, database
+`event_platform`) and prompts for the password. Override the connection for a
+different setup:
 
 ```bash
 MYSQL_PORT=3306 MYSQL_USER=showup ./scripts/demo.sh
 ```
 
-For the full RSVP-to-review presentation, create a test event starting about
-15 minutes from now. Sign in as a second account in a private window, RSVP and
-confirm, then check in while the event is in progress and submit a review. The
-seeded sample events are scheduled later and are intended for browsing.
+You can also import the seed file directly:
 
-The complete entity relationship diagram is in [database/ERD.md](database/ERD.md).
-
-## Structure
-
+```bash
+mysql -h localhost -P 3307 -u showup -p event_platform < database/seed.sql
 ```
+
+The seed file is safe to re-run and does not duplicate its sample events.
+
+Demo login:
+
+```text
+Email:    demo.host@showup.test
+Password: ShowUpDemo2026
+```
+
+The demo password and the online meeting URLs are for local development only.
+
+## Demo walkthrough
+
+1. Start the server with `php -S localhost:8000 -t public`.
+2. Sign in as `demo.host@showup.test` with password `ShowUpDemo2026`.
+3. Open the Host dashboard and show the hosted sample events.
+4. Create a test event that starts about 15 minutes from now.
+5. Sign in as a second account in a private window and RSVP.
+6. Confirm the RSVP, then check in while the event is in progress.
+7. Submit a review and show the updated reliability label.
+
+The seeded sample events are scheduled a few days ahead, so they are best for
+browsing. Use the newly created event for the check-in and review flow.
+
+## Project structure
+
+```text
 config/
-  database.example.php   committed template
-  database.php           your local copy (gitignored, created by setup.sh)
+  database.example.php   database template, committed
+  database.php           local connection settings, gitignored
+
 includes/
-  session.php            starts the session safely (include FIRST on every page)
-  auth.php               protects a page: not logged in -> login.php
-  helpers.php            e() escaping, CSRF, redirect and flash messages
-  event_helpers.php      event queries, validation, dates and reliability
-  header.php, footer.php shared page layout (owner: Ahmad)
-  event_form.php         shared create/edit event form
+  session.php            safe session start, include first
+  auth.php               protects pages that require login
+  helpers.php            escaping, CSRF, redirects, flash messages
+  event_helpers.php      event queries, validation, dates, reliability
+  event_form.php         shared create and edit form
+  header.php             shared page header and navigation
+  footer.php             shared page footer
   errors.php             friendly 403 and 404 pages
-public/                  the web root: only these files are reachable from the browser
-  index.php              redirects to home.php or login.php
-  signup.php, login.php, logout.php, home.php
-  events.php             browse upcoming events with search and filters
-  my-events.php          the signed-in user's upcoming and past RSVPs
-  rsvp.php               create, waitlist or cancel a user's RSVP
-  confirm.php            confirm an active RSVP before the event starts
-  review.php             submit one rating after checking in
-  profile.php            user details, attended events and hosted events
-  event-create.php       host an event (owner: Ahmad)
-  event.php              event detail, online link and check-in (owner: Ahmad)
-  event-edit.php         edit or cancel an event, host only (owner: Ahmad)
-  host-dashboard.php     host's events, codes and attendee lists (owner: Ahmad)
-  checkin.php            handles the attendee check-in form (owner: Ahmad)
-  assets/css, assets/js, assets/img
+
+public/                  web root, the only browser-accessible directory
+  index.php              redirects to the home page or login
+  signup.php             account creation
+  login.php              login form and handler
+  logout.php             ends the session
+  home.php               landing page after login
+  events.php             browse, search, and filter events
+  event.php              event details, check-in, and reviews
+  event-create.php       create an event
+  event-edit.php         edit or cancel an event, host only
+  my-events.php          the user's upcoming and past RSVPs
+  rsvp.php               RSVP, waitlist, and cancellation handler
+  confirm.php            confirms an RSVP before the event
+  checkin.php            attendee check-in handler
+  review.php             review submission after check-in
+  profile.php            profile, attended events, and hosted events
+  host-dashboard.php     host events, codes, and attendee lists
+  assets/                CSS, JavaScript, and images
+
 database/
-  event_schema_v2.sql    fresh installs
+  event_schema_v2.sql    fresh-install schema
   seed.sql               demo host and sample events
-  ERD.md                 current entity relationship diagram
-  migrations/            changes for an existing database
-scripts/                 setup.sh, mysql-shell.sh, check_db.php, demo.sh
+  migrations/            changes for existing databases
+
+scripts/
+  setup.sh               installs dependencies and prepares Docker MySQL
+  check_db.php           verifies PHP, MySQL, and the schema
+  mysql-shell.sh         opens a SQL prompt for the project database
+  demo.sh                loads demo data and prints the walkthrough
 ```
 
-## Event model (owner: Ahmad)
+## Event rules
 
-`events` now stores both kinds of event:
+Events are either `physical` or `online`. Physical events store a venue, address,
+and city. Online events store a meeting link that is shown only to the host and
+to attendees who have confirmed.
 
-| Column | Meaning |
+A registration moves through these states:
+
+- `registered`: the user has an active spot
+- `waitlisted`: the event was full when the user tried to RSVP
+- `cancelled`: the user cancelled or the host cancelled the event
+
+Capacity counts only `registered` rows. When a registered attendee cancels, the
+oldest waitlisted attendee is promoted automatically. Waitlist order is first in,
+first out.
+
+Check-in opens 30 minutes before the start time and closes when the event ends.
+An attendee must have confirmed before checking in.
+
+Reviews accept one rating from 1 to 5 per user and event, and only after that
+user has checked in. Reliability is calculated as `attended / confirmed` from the
+`user_reliability` view. Users with fewer than three confirmed events are shown
+as `New`. After that, the label is Highly reliable (90 percent or more),
+Reliable (70 percent or more), Sometimes reliable (40 percent or more), or
+Unreliable.
+
+## Security notes
+
+- All SQL uses MySQLi prepared statements.
+- All POST forms include a CSRF token, and handlers verify it.
+- Pages that require login use `includes/auth.php`.
+- Event editing and cancellation verify host ownership.
+- User and database content is escaped with `e()` before HTML output.
+- Login errors stay generic and never reveal whether the email or password was wrong.
+- The session ID is regenerated after a successful login.
+- Database credentials live in the gitignored `config/database.php`.
+
+## Common commands
+
+| Task | Command |
 |---|---|
-| `event_mode` | `physical` or `online` |
-| `venue_name`, `address`, `city` | physical events only |
-| `online_link` | online events only, shown to the host and confirmed attendees |
-| `location` | short card label: "Venue, City" or "Online" |
-| `checkin_code` | six-character code shown by the host |
-
-`registrations` already had the columns the commitment flow needs:
-`status` (registered, waitlisted, cancelled), `confirmed_at`, `checked_in_at`
-and `cancelled_at`. No extra status column is needed; the current state is
-derived from those timestamps. `user_reliability` is a **view**, not a table.
-
-Check-in is accepted from 30 minutes before the start until the event ends.
-An attendee must have confirmed before they can check in.
-
-Reliability is `attended / confirmed` from the `user_reliability` view. A user
-with fewer than three confirmed events is labelled **New**. After that the
-label is Highly reliable (90% or more), Reliable (70% or more), Sometimes
-reliable (40% or more) or Unreliable. Hosts see the label on the host dashboard.
-
-## Handoff notes for Sultan
-
-- **Shared layout:** set `$pageTitle` and `$activeNav`, then include
-  `includes/header.php` and `includes/footer.php`. Browse events and My events
-  are available at `public/events.php` and `public/my-events.php`. Keep the
-  signed-in user's name linking to `profile.php`.
-- **Flash messages:** call `flash_set('success'|'error'|'info', 'message')`
-  before a redirect; the header shows and clears it.
-- **RSVP:** `public/rsvp.php` handles RSVP and cancellation POSTs. It checks
-  capacity while locking the event row; full events create a `waitlisted`
-  registration. Capacity counts only rows whose status is `registered`.
-  Cancellation sets `status = 'cancelled'` and `cancelled_at = NOW()`.
-- **Confirm:** `public/confirm.php` sets `confirmed_at = NOW()` for the user's
-  active RSVP before the event starts. This unlocks the online link and
-  check-in.
-- **Reviews:** `public/review.php` accepts one 1-to-5 rating per user and event,
-  only after that user's registration has `checked_in_at` set.
-- **Event form:** `includes/event_form.php` and `public/assets/js/event-form.js`
-  are shared by create and edit. Reuse the `event_*` helpers instead of writing
-  new queries.
-
-## Team agreements (follow the course guide)
-
-- **Database:** MySQLi with prepared statements. Pages do
-  `require_once __DIR__ . '/../config/database.php';` and get `$conn`.
-- **Session:** every page starts with `require_once __DIR__ . '/../includes/session.php';`
-  before any output. Protected pages use `require_once __DIR__ . '/../includes/auth.php';` instead.
-- **Session keys after login:** `$_SESSION['user_id']`, `$_SESSION['user_name']`,
-  `$_SESSION['user_email']`. Call `session_regenerate_id(true);` right after `password_verify()` succeeds.
-- **Login errors:** always the generic "Invalid email or password." (never say which one was wrong).
-- **Redirects:** signup -> `login.php?registered=1` (login shows "Account created, please log in");
-  login -> `home.php`; logout -> `login.php`. Put `exit;` after every `header('Location: ...')`.
-- **Logout:** clear `$_SESSION`, expire the session cookie, `session_destroy()`, redirect (guide section 46).
-- **Output:** wrap anything from users or the database in `e()` (our short name for `htmlspecialchars`).
-- **Forms:** every POST form contains `<?= csrf_field() ?>` and the handler checks `csrf_verify($_POST['csrf_token'] ?? null)`.
-- **Pages** are `.php` files containing plain HTML. Each form posts to its own file.
-- **Paths** inside `public/` are relative: `assets/css/style.css`, `login.php`.
-
-## Final review checklist
-
-- **Responsive UI:** navigation, forms, event cards, and detail layouts adapt
-  for narrow screens; tables remain horizontally scrollable where needed.
-- **Empty/error states:** browse and account pages explain when there is no
-  content; invalid or unauthorized event access uses friendly 404/403 pages.
-- **Security:** edit and cancel operations verify event ownership; all POST
-  forms include CSRF tokens; dynamic SQL uses prepared statements; user and
-  database content is escaped with `e()` before HTML output.
-- **Demo data:** `database/seed.sql` is safe to re-run, and
-  `./scripts/demo.sh` loads it before the presentation.
-
-## Git workflow
-
-- `main` always works. Work on your own branch (`feature/signup`, `feature/login`) and merge by pull request.
-- Pull before you start work each day. Small commits with clear messages.
-- Never commit `config/database.php` (it is gitignored) or any password.
+| Start the site | `php -S localhost:8000 -t public` |
+| Check the database | `php scripts/check_db.php` |
+| Open a SQL prompt | `./scripts/mysql-shell.sh` |
+| Start a stopped Docker database | `docker start showup-mysql` |
+| Load demo data | `./scripts/demo.sh` |
+| Reset the Docker database | `./scripts/setup.sh --reset-db` |
 
 ## Troubleshooting
 
-- **"Connection refused" from PHP:** the container is stopped. Run `docker start showup-mysql`.
-- **Port 3307 already in use:** something else holds it. Stop that, or change `HOST_PORT` in
-  `scripts/setup.sh` and `$port` in `config/database.php`.
-- **"permission denied" talking to Docker:** log out and back in once after the first setup, or prefix with `sudo`.
-- **PHP can't find the MySQL driver:** `sudo apt install php-mysql`.
-- **"Headers already sent":** something printed output before `session_start()` or `header()`. Make the
-  PHP block at the very top of the file, with nothing (not even a blank line) before `<?php`.
-- **Database host differs by setup:** use the host and port that work from the
-  PHP server's environment. `localhost` may use a Unix socket; `127.0.0.1`
-  uses TCP. Docker and native MySQL can require different values in
-  `config/database.php`.
+**The database connection is refused**
 
-## Start over (full clean slate)
-
-Your DB credentials live outside the repo in `~/.config/showup/db-credentials`.
+The Docker container is probably stopped:
 
 ```bash
-docker rm -f showup-mysql && docker volume rm showup-mysql-data
+docker start showup-mysql
+```
+
+Then run `php scripts/check_db.php` again.
+
+**Port 3307 is already in use**
+
+Stop the process using the port, or change `HOST_PORT` in `scripts/setup.sh` and
+the port in `config/database.php`.
+
+**Docker reports a permission error**
+
+Log out and back in once after the first setup, or run the Docker commands with
+`sudo`.
+
+**PHP cannot find the MySQL driver**
+
+```bash
+sudo apt install php-mysql
+```
+
+**Headers already sent**
+
+Something printed output before `session_start()` or `header()`. Keep the opening
+`<?php` block at the very top of the file with no blank lines or whitespace
+before it.
+
+**Native MySQL and Docker behave differently**
+
+Use the host and port that work from the environment running PHP. `localhost` may
+use a Unix socket, while `127.0.0.1` uses TCP. Docker MySQL runs on port `3307`
+by default, and native MySQL usually runs on `3306`.
+
+**Starting over with Docker**
+
+```bash
+docker rm -f showup-mysql
+docker volume rm showup-mysql-data
 rm -rf ~/.config/showup config/database.php
 ./scripts/setup.sh
 ```
+
+## Credits
+
+ShowUp was built by Ahmad and Sultan for a Web Technologies semester project.
