@@ -89,6 +89,7 @@ function event_fetch(mysqli $conn, int $eventId): ?array
                c.name AS category_name,
                u.full_name AS host_name,
                (NOW() BETWEEN e.start_datetime - INTERVAL 30 MINUTE AND e.end_datetime) AS checkin_open,
+               (e.start_datetime > NOW()) AS registration_open,
                (SELECT COUNT(*) FROM registrations r
                  WHERE r.event_id = e.event_id AND r.status = 'registered') AS attendee_count,
                (SELECT COUNT(*) FROM registrations r
@@ -122,6 +123,48 @@ function event_fetch_registration(mysqli $conn, int $eventId, int $userId): ?arr
     $stmt->close();
 
     return $registration ?: null;
+}
+
+/** Loads this user's review for an event, or null when no review has been submitted. */
+function event_fetch_review(mysqli $conn, int $eventId, int $userId): ?array
+{
+    $stmt = $conn->prepare(
+        'SELECT rating, comment, created_at
+         FROM event_reviews WHERE event_id = ? AND user_id = ? LIMIT 1'
+    );
+    $stmt->bind_param('ii', $eventId, $userId);
+    $stmt->execute();
+    $review = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $review ?: null;
+}
+
+/** All events this user registered for, including waitlisted and cancelled registrations. */
+function user_fetch_registrations(mysqli $conn, int $userId): array
+{
+    $sql = <<<SQL
+        SELECT r.registration_id, r.status,
+               r.registered_at, r.confirmed_at, r.checked_in_at, r.cancelled_at,
+               e.event_id, e.title, e.description, e.event_mode, e.location,
+               e.start_datetime, e.end_datetime, e.capacity, e.status AS event_status,
+               c.name AS category_name, u.full_name AS host_name,
+               (e.start_datetime > NOW()) AS is_upcoming
+        FROM registrations r
+        JOIN events e ON e.event_id = r.event_id
+        JOIN categories c ON c.category_id = e.category_id
+        JOIN users u ON u.user_id = e.host_id
+        WHERE r.user_id = ?
+        ORDER BY e.start_datetime ASC
+        SQL;
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $registrations = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $registrations;
 }
 
 /** Everyone who signed up for an event, with their reliability counters. */
