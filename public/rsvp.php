@@ -7,6 +7,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/event_helpers.php';
 
 $userId = (int) $_SESSION['user_id'];
 
@@ -127,19 +128,44 @@ try {
     }
 
     $stmt = $conn->prepare(
+        'SELECT status, checked_in_at FROM registrations
+         WHERE event_id = ? AND user_id = ? FOR UPDATE'
+    );
+    $stmt->bind_param('ii', $eventId, $userId);
+    $stmt->execute();
+    $registration = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($registration !== null && $registration['status'] === 'registered'
+        && $registration['checked_in_at'] !== null) {
+        $conn->rollback();
+        flash_set('error', 'You cannot cancel an RSVP after checking in.');
+        redirect($returnTo);
+    }
+
+    $stmt = $conn->prepare(
         "UPDATE registrations SET status = 'cancelled', cancelled_at = NOW()
-         WHERE event_id = ? AND user_id = ? AND status IN ('registered', 'waitlisted')"
+         WHERE event_id = ? AND user_id = ? AND status IN ('registered', 'waitlisted')
+           AND checked_in_at IS NULL"
     );
     $stmt->bind_param('ii', $eventId, $userId);
     $stmt->execute();
     $changed = $stmt->affected_rows > 0;
     $stmt->close();
+
+    $promoted = $changed ? event_promote_waitlisted($conn, $eventId) : 0;
     $conn->commit();
 
-    flash_set(
-        $changed ? 'success' : 'info',
-        $changed ? 'Your RSVP has been cancelled.' : 'You do not have an active RSVP to cancel.'
-    );
+    if ($changed) {
+        flash_set(
+            'success',
+            $promoted > 0
+                ? 'Your RSVP has been cancelled. A waitlisted attendee has been moved up.'
+                : 'Your RSVP has been cancelled.'
+        );
+    } else {
+        flash_set('info', 'You do not have an active RSVP to cancel.');
+    }
     redirect($returnTo);
 } catch (mysqli_sql_exception $ex) {
     $conn->rollback();
