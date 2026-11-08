@@ -7,16 +7,15 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/session.php';     // session first, before any output
-require_once __DIR__ . '/../config/database.php';      // gives us $conn (MySQLi)
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-// Already logged in? Nothing to do here.
 if (isset($_SESSION['user_id'])) {
     redirect('home.php');
 }
 
-$errors = [];                                          // field name => message
-$old    = ['full_name' => '', 'email' => '', 'city' => ''];   // values to refill the form
+$errors = [];
+$old    = ['full_name' => '', 'email' => '', 'city' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $old['full_name'] = trim((string) ($_POST['full_name'] ?? ''));
@@ -57,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['confirm_password'] = 'Passwords do not match.';
     }
 
-    // 3. Does this email already have an account? (prepared statement, as in the course guide)
     if (!isset($errors['email']) && !isset($errors['form'])) {
         $stmt = $conn->prepare('SELECT user_id FROM users WHERE email = ?');
         $stmt->bind_param('s', $old['email']);
@@ -68,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
     }
 
-    // 4. Everything valid: create the account
     if (!$errors) {
         try {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);   // never store the real password
