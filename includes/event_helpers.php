@@ -167,6 +167,77 @@ function user_fetch_registrations(mysqli $conn, int $userId): array
     return $registrations;
 }
 
+/**
+ * Moves the oldest waitlisted registrations up while the event has free seats.
+ * Returns the number of attendees promoted. The caller should hold the event
+ * row lock (for example inside the RSVP transaction) to avoid overbooking.
+ */
+function event_promote_waitlisted(mysqli $conn, int $eventId): int
+{
+    $stmt = $conn->prepare('SELECT capacity FROM events WHERE event_id = ? LIMIT 1');
+    $stmt->bind_param('i', $eventId);
+    $stmt->execute();
+    $event = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($event === null || $event['capacity'] === null) {
+        return 0;
+    }
+
+    $capacity = (int) $event['capacity'];
+    $promoted = 0;
+
+    while (true) {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) AS registered_count
+             FROM registrations WHERE event_id = ? AND status = 'registered'"
+        );
+        $stmt->bind_param('i', $eventId);
+        $stmt->execute();
+        $registeredCount = (int) $stmt->get_result()->fetch_assoc()['registered_count'];
+        $stmt->close();
+
+        if ($registeredCount >= $capacity) {
+            break;
+        }
+
+        $stmt = $conn->prepare(
+            "SELECT registration_id FROM registrations
+             WHERE event_id = ? AND status = 'waitlisted'
+             ORDER BY registered_at ASC, registration_id ASC
+             LIMIT 1 FOR UPDATE"
+        );
+        $stmt->bind_param('i', $eventId);
+        $stmt->execute();
+        $waitlisted = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($waitlisted === null) {
+            break;
+        }
+
+        $registrationId = (int) $waitlisted['registration_id'];
+        $stmt = $conn->prepare(
+            "UPDATE registrations
+             SET status = 'registered', confirmed_at = NULL,
+                 checked_in_at = NULL, cancelled_at = NULL
+             WHERE registration_id = ? AND status = 'waitlisted'"
+        );
+        $stmt->bind_param('i', $registrationId);
+        $stmt->execute();
+        $changed = $stmt->affected_rows > 0;
+        $stmt->close();
+
+        if (!$changed) {
+            break;
+        }
+
+        $promoted++;
+    }
+
+    return $promoted;
+}
+
 /** Everyone who signed up for an event, with their reliability counters. */
 function event_fetch_attendees(mysqli $conn, int $eventId): array
 {

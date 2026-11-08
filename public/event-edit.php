@@ -78,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         event_validate_capacity($values)
     );
 
-    // The capacity cannot drop below the number of people already going.
     if (!isset($errors['capacity']) && $values['capacity'] !== ''
         && (int) $values['capacity'] < (int) $event['attendee_count']) {
         $errors['capacity'] = 'Capacity cannot be lower than the '
@@ -86,11 +85,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
+        $conn->begin_transaction();
         try {
+            // Lock the event row so a concurrent RSVP cannot overbook while
+            // waitlisted attendees are promoted into newly available seats.
+            $stmt = $conn->prepare(
+                'SELECT event_id FROM events WHERE event_id = ? AND host_id = ? FOR UPDATE'
+            );
+            $stmt->bind_param('ii', $eventId, $userId);
+            $stmt->execute();
+            $lockedEvent = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if ($lockedEvent === null) {
+                $conn->rollback();
+                show_error_page(404, 'Event not found', 'That event does not exist.');
+            }
+
             event_update($conn, $eventId, $userId, event_prepare_for_save($values));
+            event_promote_waitlisted($conn, $eventId);
+            $conn->commit();
             flash_set('success', 'Event updated.');
             redirect('event.php?event_id=' . $eventId);
         } catch (mysqli_sql_exception $ex) {
+            $conn->rollback();
             error_log('Update event failed: ' . $ex->getMessage());
             $errors['form'] = 'Something went wrong while saving the event. Please try again.';
         }

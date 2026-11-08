@@ -10,9 +10,9 @@ declare(strict_types=1);
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_strict_mode', '1');       // refuse session IDs the server never created (session fixation)
     session_set_cookie_params([
-        'lifetime' => 0,                           // cookie lasts until the browser closes
+        'lifetime' => 0,
         'path'     => '/',
-        'secure'   => !empty($_SERVER['HTTPS']),   // Secure cookie only when the site runs on HTTPS
+        'secure'   => !empty($_SERVER['HTTPS']),
         'httponly' => true,                        // JavaScript cannot read the session cookie
         'samesite' => 'Lax',                       // basic protection against cross-site requests
     ]);

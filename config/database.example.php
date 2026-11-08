@@ -20,7 +20,7 @@ $username = 'showup';
 $password = 'CHANGE_ME';
 $database = 'event_platform';
 
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);   // errors become exceptions
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 try {
     $conn = new mysqli($host, $username, $password, $database, $port);
