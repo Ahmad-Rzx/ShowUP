@@ -23,7 +23,7 @@ $config = __DIR__ . '/../config/database.php';
 if (!is_file($config)) {
     fail('config/database.php not found. Run ./scripts/setup.sh first.');
 }
-require $config;   // provides $conn; exits with an error by itself if it cannot connect
+require $config;
 
 $version  = $conn->query('SELECT VERSION()')->fetch_row()[0];
 $found    = array_column($conn->query('SHOW FULL TABLES')->fetch_all(MYSQLI_NUM), 0);
