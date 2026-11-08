@@ -67,6 +67,7 @@ require __DIR__ . '/../includes/header.php';
                   'checked_in_at' => $event['checked_in_at'],
               ];
               $hasActiveRsvp = in_array($event['status'], ['registered', 'waitlisted'], true);
+              $canCancelRsvp = $hasActiveRsvp && $event['checked_in_at'] === null;
               $canChangeRsvp = (bool) $event['is_upcoming'] && $event['event_status'] === 'published';
               ?>
               <article class="event-card">
@@ -103,7 +104,7 @@ require __DIR__ . '/../includes/header.php';
 
                 <div class="event-actions">
                   <a class="secondary-btn" href="event.php?event_id=<?= (int) $event['event_id'] ?>">View event</a>
-                  <?php if ($canChangeRsvp && $hasActiveRsvp): ?>
+                  <?php if ($canChangeRsvp && $canCancelRsvp): ?>
                     <form method="post" action="rsvp.php">
                       <?= csrf_field() ?>
                       <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
@@ -111,7 +112,7 @@ require __DIR__ . '/../includes/header.php';
                       <input type="hidden" name="return_to" value="my-events">
                       <button type="submit" class="secondary-btn">Cancel RSVP</button>
                     </form>
-                  <?php elseif ($canChangeRsvp): ?>
+                  <?php elseif ($canChangeRsvp && !$hasActiveRsvp): ?>
                     <form method="post" action="rsvp.php">
                       <?= csrf_field() ?>
                       <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
