@@ -607,8 +607,6 @@ button {
   outline-offset: 2px;
 }
 
-/* Shared page pieces ---------------------------------------------------- */
-
 [hidden] {
   display: none !important;
 }
@@ -790,8 +788,6 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* Event detail ---------------------------------------------------------- */
-
 .detail-heading h1 {
   margin: 0;
 }
@@ -875,8 +871,6 @@ button {
   letter-spacing: 0.2em;
   font-weight: 700;
 }
-
-/* Event form ------------------------------------------------------------ */
 
 .form-card {
   width: 100%;
@@ -965,8 +959,6 @@ button {
 .danger-zone p {
   color: var(--muted);
 }
-
-/* Host dashboard -------------------------------------------------------- */
 
 .summary-bar {
   display: flex;
@@ -1104,8 +1096,6 @@ button {
 .data-table .field-hint {
   margin-top: 0.15rem;
 }
-
-/* Status and reliability badges ----------------------------------------- */
 
 .status-pill {
   display: inline-block;
